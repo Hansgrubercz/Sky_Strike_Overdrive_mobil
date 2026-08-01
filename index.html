@@ -2177,7 +2177,30 @@ function update(dt) {
     if(!fuelCrashing) {
         let inputX = 0, inputY = 0;
         
-        if(controlScheme === 'wasd') {
+        // ✅ TOUCH OVLÁDÁNÍ - letoun sleduje dotyk (mobil)
+        if(touchX !== null && touchY !== null) {
+            const dx = touchX - plane.x;
+            const dy = touchY - plane.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if(distance > 40) { // Deadzone
+                inputX = (dx / distance) * 2;
+                inputY = (dy / distance) * 2;
+            }
+        }
+        // ✅ MOUSE OVLÁDÁNÍ PRO DESKTOP
+        else if(mouseX !== null && mouseY !== null) {
+            const dx = mouseX - plane.x;
+            const dy = mouseY - plane.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if(distance > 40) { // Deadzone
+                inputX = (dx / distance) * 2;
+                inputY = (dy / distance) * 2;
+            }
+        }
+        // KEYBOARD ovládání (Arrows / WASD)
+        else if(controlScheme === 'wasd') {
             // MODERN: Full 4-way WASD movement
             if(keys['w']) { inputY -= 1; targetRot = -0.15; }
             if(keys['s']) { inputY += 1; targetRot = 0.15; }
