@@ -1083,7 +1083,7 @@ let distantExpTimer = 0;
 let bubbles = [];
 
 const plane = { 
-    x: 220, y: 350, w: 120, h: 48,  // ← Posunuto vpravo aby nezakrývalo joystick!
+    x: 600, y: 350, w: 120, h: 48,  // ← Posunuto daleko doprava aby prst na joysticku nezakrýval letadlo!
     shield: false, frame: 0, blink: 0, 
     velY: 0, velX: 0, rotation: 0, shooting: false 
 };
@@ -2445,34 +2445,40 @@ function update(dt) {
     if(!fuelCrashing) {
         let inputX = 0, inputY = 0;
         
-        if(controlScheme === 'wasd') {
-            // MODERN: Full 4-way WASD movement
-            if(keys['w']) { inputY -= 1; targetRot = -0.15; }
-            if(keys['s']) { inputY += 1; targetRot = 0.15; }
-            if(keys['a']) { inputX -= 1; }
-            if(keys['d']) { inputX += 1; }
+        // MOBILE JOYSTICK INPUT (Dead Trigger 2 direct mapping)
+        // Continuous joystick values applied directly, no keyboard simulation
+        const joystickActive = Math.abs(touchJoystickX) > 0.05 || Math.abs(touchJoystickY) > 0.05;
+        if(joystickActive) {
+            inputX = touchJoystickX;  // Direct mapping: -1 to 1
+            inputY = touchJoystickY;  // Direct mapping: -1 to 1
+            
+            // Rotation based on vertical input
+            if(touchJoystickY < -0.1) targetRot = -0.15;
+            else if(touchJoystickY > 0.1) targetRot = 0.15;
         } else {
-            // CLASSIC: W/S only (original, no left/right)
-            if(keys['w'] || keys['arrowup']) { inputY -= 1; targetRot = -0.15; }
-            if(keys['s'] || keys['arrowdown']) { inputY += 1; targetRot = 0.15; }
-            // NO LEFT/RIGHT in classic mode!
+            // Keyboard fallback (desktop/chrome dev tools)
+            if(controlScheme === 'wasd') {
+                if(keys['w']) { inputY -= 1; targetRot = -0.15; }
+                if(keys['s']) { inputY += 1; targetRot = 0.15; }
+                if(keys['a']) { inputX -= 1; }
+                if(keys['d']) { inputX += 1; }
+            } else {
+                if(keys['w'] || keys['arrowup']) { inputY -= 1; targetRot = -0.15; }
+                if(keys['s'] || keys['arrowdown']) { inputY += 1; targetRot = 0.15; }
+            }
         }
         
-        // NORMALIZE DIAGONALS! (Pythagoras) - only for WASD
-        if(inputX !== 0 && inputY !== 0) {
-            const length = Math.sqrt(inputX * inputX + inputY * inputY);
-            inputX /= length;
-            inputY /= length;
-        }
+        // DIRECT LINEAR MAPPING (Dead Trigger 2 style - no curves)
+        const maxVelY = 2.8;   // Reduced from 3.5 for more control
+        const maxVelX = 1.0;   // Reduced from 1.2
         
-        // EASE-IN ACCELERATION CURVE (feels "heavy" not "papery")
-        const inputMagnitude = Math.sqrt(inputX * inputX + inputY * inputY);
-        const easeInCurve = inputMagnitude * inputMagnitude;  // Quadratic ease-in
-        const smoothFactor = 0.65;  // Blend smooth acceleration (0.65 = responsive but not snappy)
+        // Apply input directly - linear, predictable
+        plane.velY += inputY * maxVelY * dt;
+        plane.velX += inputX * maxVelX * dt;
         
-        // Apply normalized input with ease-in and smoothing
-        plane.velY += inputY * 3.5 * easeInCurve * smoothFactor * dt;
-        plane.velX += inputX * 1.0 * easeInCurve * smoothFactor * dt;
+        // Clamp to max velocity (prevents overshooting)
+        plane.velY = Math.max(-maxVelY, Math.min(maxVelY, plane.velY));
+        plane.velX = Math.max(-maxVelX, Math.min(maxVelX, plane.velX));
     } else {
         // Nose down when crashing
         targetRot = 0.4;
